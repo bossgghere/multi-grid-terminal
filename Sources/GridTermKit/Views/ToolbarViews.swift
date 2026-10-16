@@ -282,35 +282,49 @@ public struct FontZoomPillBar: View {
     }
     
     public var body: some View {
-        HStack(spacing: 2) {
-            Button(action: { sessionManager.zoomOut() }) {
-                Image(systemName: "minus")
-                    .font(.system(size: 9, weight: .bold))
-                    .foregroundColor(.secondary)
+        HStack(spacing: 1) {
+            Button(action: {
+                sessionManager.zoomOut()
+            }) {
+                HStack {
+                    Image(systemName: "minus")
+                        .font(.system(size: 11, weight: .bold))
+                }
+                .foregroundColor(.secondary)
+                .frame(width: 26, height: 22)
+                .background(Color.white.opacity(0.001))
+                .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
-            .padding(.horizontal, 6)
-            .padding(.vertical, 4)
             .help("Zoom Out (⌘-)")
             
-            Button(action: { sessionManager.resetZoom() }) {
+            Button(action: {
+                sessionManager.resetZoom()
+            }) {
                 Text("\(Int(sessionManager.globalFontSize))pt")
                     .font(.system(size: 10, weight: .medium, design: .monospaced))
                     .foregroundColor(.primary)
+                    .frame(height: 22)
+                    .padding(.horizontal, 4)
+                    .background(Color.white.opacity(0.001))
+                    .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
-            .padding(.horizontal, 4)
-            .padding(.vertical, 4)
             .help("Reset Zoom (⌘0)")
             
-            Button(action: { sessionManager.zoomIn() }) {
-                Image(systemName: "plus")
-                    .font(.system(size: 9, weight: .bold))
-                    .foregroundColor(.secondary)
+            Button(action: {
+                sessionManager.zoomIn()
+            }) {
+                HStack {
+                    Image(systemName: "plus")
+                        .font(.system(size: 11, weight: .bold))
+                }
+                .foregroundColor(.secondary)
+                .frame(width: 26, height: 22)
+                .background(Color.white.opacity(0.001))
+                .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
-            .padding(.horizontal, 6)
-            .padding(.vertical, 4)
             .help("Zoom In (⌘+)")
         }
         .padding(2)
@@ -318,7 +332,7 @@ public struct FontZoomPillBar: View {
         .cornerRadius(6)
         .overlay(
             RoundedRectangle(cornerRadius: 6)
-                .stroke(Color.white.opacity(0.06), lineWidth: 1)
+                .stroke(Color.white.opacity(0.08), lineWidth: 1)
         )
     }
 }

@@ -121,12 +121,12 @@ public struct MainWindowView: View {
                             return nil
                         }
                         // Zoom in
-                        if chars == "+" || chars == "=" {
+                        if chars == "+" || chars == "=" || event.keyCode == 24 {
                             sessionManager.zoomIn()
                             return nil
                         }
                         // Zoom out
-                        if chars == "-" {
+                        if chars == "-" || chars == "_" || event.keyCode == 27 {
                             sessionManager.zoomOut()
                             return nil
                         }
