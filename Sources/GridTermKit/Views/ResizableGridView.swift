@@ -237,10 +237,11 @@ private struct ColumnDivider: View {
     var body: some View {
         ZStack {
             Rectangle()
-                .fill(isHovering ? Color.blue.opacity(0.6) : Color.white.opacity(0.05))
+                .fill(isHovering ? Color.cyan.opacity(0.85) : Color.white.opacity(0.06))
                 .frame(width: dividerSize, height: height)
+                .shadow(color: isHovering ? Color.cyan.opacity(0.6) : Color.clear, radius: 4)
         }
-        .contentShape(Rectangle().inset(by: -2))
+        .contentShape(Rectangle().inset(by: -3))
         .onHover { hovering in
             isHovering = hovering
             if hovering {
@@ -278,10 +279,11 @@ private struct RowDivider: View {
     var body: some View {
         ZStack {
             Rectangle()
-                .fill(isHovering ? Color.blue.opacity(0.6) : Color.white.opacity(0.05))
+                .fill(isHovering ? Color.cyan.opacity(0.85) : Color.white.opacity(0.06))
                 .frame(width: width, height: dividerSize)
+                .shadow(color: isHovering ? Color.cyan.opacity(0.6) : Color.clear, radius: 4)
         }
-        .contentShape(Rectangle().inset(by: -2))
+        .contentShape(Rectangle().inset(by: -3))
         .onHover { hovering in
             isHovering = hovering
             if hovering {

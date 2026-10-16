@@ -10,6 +10,11 @@ public struct GridSelectorPopoverView: View {
     @State private var customRows: Int = 2
     @State private var customCols: Int = 2
     
+    public init(sessionManager: SessionManager, isPresented: Binding<Bool>) {
+        self.sessionManager = sessionManager
+        self._isPresented = isPresented
+    }
+    
     public var body: some View {
         VStack(alignment: .leading, spacing: 14) {
             // Header
@@ -20,7 +25,7 @@ public struct GridSelectorPopoverView: View {
                 if hoverRow > 0 && hoverCol > 0 {
                     Text("\(hoverRow) × \(hoverCol)")
                         .font(.system(size: 12, weight: .bold, design: .monospaced))
-                        .foregroundColor(.blue)
+                        .foregroundColor(.cyan)
                 } else {
                     Text(sessionManager.activeLayout.displayName)
                         .font(.system(size: 12, weight: .medium, design: .monospaced))
@@ -30,9 +35,10 @@ public struct GridSelectorPopoverView: View {
             
             // Interactive 4x4 matrix picker
             VStack(alignment: .leading, spacing: 6) {
-                Text("Quick Grid Picker")
-                    .font(.system(size: 11, weight: .medium))
+                Text("Interactive Matrix")
+                    .font(.system(size: 10, weight: .semibold))
                     .foregroundColor(.secondary)
+                    .textCase(.uppercase)
                 
                 VStack(spacing: 4) {
                     ForEach(1...4, id: \.self) { r in
@@ -42,11 +48,15 @@ public struct GridSelectorPopoverView: View {
                                     (hoverRow == 0 && r <= sessionManager.activeLayout.rows && c <= sessionManager.activeLayout.cols)
                                 
                                 RoundedRectangle(cornerRadius: 3)
-                                    .fill(isHighlighted ? Color.blue : Color.white.opacity(0.12))
-                                    .frame(width: 22, height: 18)
+                                    .fill(
+                                        isHighlighted ?
+                                        LinearGradient(colors: [Color.cyan, Color.blue], startPoint: .topLeading, endPoint: .bottomTrailing) :
+                                        LinearGradient(colors: [Color.white.opacity(0.10), Color.white.opacity(0.06)], startPoint: .topLeading, endPoint: .bottomTrailing)
+                                    )
+                                    .frame(width: 24, height: 20)
                                     .overlay(
                                         RoundedRectangle(cornerRadius: 3)
-                                            .stroke(isHighlighted ? Color.blue.opacity(0.8) : Color.white.opacity(0.05), lineWidth: 1)
+                                            .stroke(isHighlighted ? Color.cyan.opacity(0.8) : Color.white.opacity(0.05), lineWidth: 1)
                                     )
                                     .onHover { isHovered in
                                         if isHovered {
@@ -62,9 +72,9 @@ public struct GridSelectorPopoverView: View {
                         }
                     }
                 }
-                .padding(6)
-                .background(Color.black.opacity(0.2))
-                .cornerRadius(6)
+                .padding(8)
+                .background(Color.black.opacity(0.35))
+                .cornerRadius(7)
                 .onHover { isHovered in
                     if !isHovered {
                         hoverRow = 0
@@ -74,13 +84,14 @@ public struct GridSelectorPopoverView: View {
             }
             
             Divider()
-                .background(Color.white.opacity(0.1))
+                .background(Color.white.opacity(0.08))
             
             // Standard Presets
             VStack(alignment: .leading, spacing: 6) {
-                Text("Presets")
-                    .font(.system(size: 11, weight: .medium))
+                Text("Standard Presets")
+                    .font(.system(size: 10, weight: .semibold))
                     .foregroundColor(.secondary)
+                    .textCase(.uppercase)
                 
                 LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 6) {
                     ForEach(GridLayout.presets) { preset in
@@ -88,24 +99,24 @@ public struct GridSelectorPopoverView: View {
                             sessionManager.setLayout(preset)
                             isPresented = false
                         }) {
-                            HStack {
+                            HStack(spacing: 6) {
                                 MiniGridIcon(rows: preset.rows, cols: preset.cols)
-                                    .frame(width: 16, height: 14)
+                                    .frame(width: 14, height: 12)
                                 Text(preset.displayName)
-                                    .font(.system(size: 11, weight: .medium))
+                                    .font(.system(size: 11, weight: .medium, design: .monospaced))
                                 Spacer()
                                 if sessionManager.activeLayout == preset && !sessionManager.isMaximized {
                                     Image(systemName: "checkmark")
                                         .font(.system(size: 10, weight: .bold))
-                                        .foregroundColor(.blue)
+                                        .foregroundColor(.cyan)
                                 }
                             }
                             .padding(.horizontal, 8)
                             .padding(.vertical, 5)
                             .background(
-                                sessionManager.activeLayout == preset ? Color.blue.opacity(0.15) : Color.white.opacity(0.05)
+                                sessionManager.activeLayout == preset ? Color.cyan.opacity(0.18) : Color.white.opacity(0.05)
                             )
-                            .cornerRadius(4)
+                            .cornerRadius(5)
                         }
                         .buttonStyle(.plain)
                     }
@@ -113,13 +124,14 @@ public struct GridSelectorPopoverView: View {
             }
             
             Divider()
-                .background(Color.white.opacity(0.1))
+                .background(Color.white.opacity(0.08))
             
             // Custom Rows / Cols Steppers
             VStack(alignment: .leading, spacing: 8) {
-                Text("Custom Dimensions")
-                    .font(.system(size: 11, weight: .medium))
+                Text("Custom Rows & Columns")
+                    .font(.system(size: 10, weight: .semibold))
                     .foregroundColor(.secondary)
+                    .textCase(.uppercase)
                 
                 HStack(spacing: 12) {
                     Stepper("Rows: \(customRows)", value: $customRows, in: 1...5)
@@ -132,20 +144,22 @@ public struct GridSelectorPopoverView: View {
                     sessionManager.setLayout(GridLayout(rows: customRows, cols: customCols))
                     isPresented = false
                 }) {
-                    Text("Apply Custom (\(customRows) × \(customCols))")
+                    Text("Apply \(customRows) × \(customCols)")
                         .font(.system(size: 11, weight: .semibold))
                         .frame(maxWidth: .infinity)
-                        .padding(.vertical, 4)
-                        .background(Color.blue)
+                        .padding(.vertical, 5)
+                        .background(
+                            LinearGradient(colors: [Color.cyan, Color.blue], startPoint: .leading, endPoint: .trailing)
+                        )
                         .foregroundColor(.white)
-                        .cornerRadius(4)
+                        .cornerRadius(5)
                 }
                 .buttonStyle(.plain)
             }
         }
         .padding(14)
-        .frame(width: 250)
-        .background(Color(nsColor: NSColor(red: 0.14, green: 0.15, blue: 0.18, alpha: 1.0)))
+        .frame(width: 260)
+        .background(Color(nsColor: NSColor(red: 0.10, green: 0.11, blue: 0.15, alpha: 1.0)))
         .onAppear {
             customRows = sessionManager.activeLayout.rows
             customCols = sessionManager.activeLayout.cols
@@ -156,6 +170,11 @@ public struct GridSelectorPopoverView: View {
 public struct MiniGridIcon: View {
     let rows: Int
     let cols: Int
+    
+    public init(rows: Int, cols: Int) {
+        self.rows = rows
+        self.cols = cols
+    }
     
     public var body: some View {
         GeometryReader { geo in
@@ -171,7 +190,7 @@ public struct MiniGridIcon: View {
                     HStack(spacing: 1.5) {
                         ForEach(0..<c, id: \.self) { _ in
                             RoundedRectangle(cornerRadius: 1)
-                                .fill(Color.primary.opacity(0.7))
+                                .fill(Color.primary.opacity(0.75))
                                 .frame(width: max(2, cellW), height: max(2, cellH))
                         }
                     }
@@ -181,74 +200,125 @@ public struct MiniGridIcon: View {
     }
 }
 
-public struct WorkingDirectoryToolbarItem: View {
+public struct QuickLayoutPillBar: View {
     @ObservedObject var sessionManager: SessionManager
-    @State private var showingOptions = false
+    @Binding var showingPopover: Bool
     
-    private var folderName: String {
-        let path = sessionManager.selectedWorkingDirectory.path
-        let home = NSHomeDirectory()
-        if path == home {
-            return "~ (Home)"
+    public init(sessionManager: SessionManager, showingPopover: Binding<Bool>) {
+        self.sessionManager = sessionManager
+        self._showingPopover = showingPopover
+    }
+    
+    private let quickPresets: [GridLayout] = [
+        .preset1x1,
+        .preset1x2,
+        .preset2x2,
+        .preset2x3,
+        .preset3x3
+    ]
+    
+    public var body: some View {
+        HStack(spacing: 2) {
+            ForEach(quickPresets) { preset in
+                let isSelected = sessionManager.activeLayout == preset && !sessionManager.isMaximized
+                Button(action: {
+                    sessionManager.setLayout(preset)
+                }) {
+                    Text(preset.displayName)
+                        .font(.system(size: 11, weight: isSelected ? .bold : .medium, design: .monospaced))
+                        .foregroundColor(isSelected ? .white : .secondary)
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 4)
+                        .background(
+                            isSelected ?
+                            LinearGradient(colors: [Color.cyan.opacity(0.35), Color.blue.opacity(0.35)], startPoint: .topLeading, endPoint: .bottomTrailing) :
+                            LinearGradient(colors: [Color.clear, Color.clear], startPoint: .topLeading, endPoint: .bottomTrailing)
+                        )
+                        .cornerRadius(5)
+                }
+                .buttonStyle(.plain)
+            }
+            
+            // Popover dropdown trigger for custom/more layouts
+            Button(action: {
+                showingPopover.toggle()
+            }) {
+                HStack(spacing: 3) {
+                    Image(systemName: "square.grid.2x2")
+                        .font(.system(size: 10))
+                    Image(systemName: "chevron.down")
+                        .font(.system(size: 8, weight: .bold))
+                }
+                .foregroundColor(.secondary)
+                .padding(.horizontal, 7)
+                .padding(.vertical, 4)
+                .background(Color.white.opacity(0.04))
+                .cornerRadius(5)
+            }
+            .buttonStyle(.plain)
+            .popover(isPresented: $showingPopover, arrowEdge: .bottom) {
+                GridSelectorPopoverView(
+                    sessionManager: sessionManager,
+                    isPresented: $showingPopover
+                )
+            }
+            .help("More Grid Layouts")
         }
-        return sessionManager.selectedWorkingDirectory.lastPathComponent
+        .padding(3)
+        .background(Color(nsColor: NSColor(red: 0.12, green: 0.13, blue: 0.17, alpha: 1.0)))
+        .cornerRadius(7)
+        .overlay(
+            RoundedRectangle(cornerRadius: 7)
+                .stroke(Color.white.opacity(0.06), lineWidth: 1)
+        )
+    }
+}
+
+public struct FontZoomPillBar: View {
+    @ObservedObject var sessionManager: SessionManager
+    
+    public init(sessionManager: SessionManager) {
+        self.sessionManager = sessionManager
     }
     
     public var body: some View {
-        Menu {
-            Button("Choose Project Folder...") {
-                chooseFolder()
+        HStack(spacing: 2) {
+            Button(action: { sessionManager.zoomOut() }) {
+                Image(systemName: "minus")
+                    .font(.system(size: 9, weight: .bold))
+                    .foregroundColor(.secondary)
             }
-            
-            Divider()
-            
-            Button("Open Directory in Active Terminal (cd)") {
-                sessionManager.openWorkingDirectoryInActiveTerminal()
-            }
-            
-            Button("Open Directory in All Terminals (cd)") {
-                sessionManager.openWorkingDirectoryInAllTerminals()
-            }
-            
-            Divider()
-            
-            Button("Reveal in Finder") {
-                NSWorkspace.shared.selectFile(nil, inFileViewerRootedAtPath: sessionManager.selectedWorkingDirectory.path)
-            }
-            
-            Button("Copy Folder Path") {
-                NSPasteboard.general.clearContents()
-                NSPasteboard.general.setString(sessionManager.selectedWorkingDirectory.path, forType: .string)
-            }
-        } label: {
-            HStack(spacing: 5) {
-                Image(systemName: "folder.fill")
-                    .foregroundColor(.yellow)
-                    .font(.system(size: 11))
-                Text(folderName)
-                    .font(.system(size: 11, weight: .medium))
-                    .lineLimit(1)
-            }
-            .padding(.horizontal, 8)
+            .buttonStyle(.plain)
+            .padding(.horizontal, 6)
             .padding(.vertical, 4)
-            .background(Color.white.opacity(0.08))
-            .cornerRadius(5)
+            .help("Zoom Out (⌘-)")
+            
+            Button(action: { sessionManager.resetZoom() }) {
+                Text("\(Int(sessionManager.globalFontSize))pt")
+                    .font(.system(size: 10, weight: .medium, design: .monospaced))
+                    .foregroundColor(.primary)
+            }
+            .buttonStyle(.plain)
+            .padding(.horizontal, 4)
+            .padding(.vertical, 4)
+            .help("Reset Zoom (⌘0)")
+            
+            Button(action: { sessionManager.zoomIn() }) {
+                Image(systemName: "plus")
+                    .font(.system(size: 9, weight: .bold))
+                    .foregroundColor(.secondary)
+            }
+            .buttonStyle(.plain)
+            .padding(.horizontal, 6)
+            .padding(.vertical, 4)
+            .help("Zoom In (⌘+)")
         }
-        .menuStyle(.borderlessButton)
-        .help("Working Directory: \(sessionManager.selectedWorkingDirectory.path)")
-    }
-    
-    private func chooseFolder() {
-        let panel = NSOpenPanel()
-        panel.canChooseFiles = false
-        panel.canChooseDirectories = true
-        panel.allowsMultipleSelection = false
-        panel.canCreateDirectories = true
-        panel.prompt = "Select"
-        panel.directoryURL = sessionManager.selectedWorkingDirectory
-        
-        if panel.runModal() == .OK, let url = panel.url {
-            sessionManager.selectWorkingDirectory(url)
-        }
+        .padding(2)
+        .background(Color(nsColor: NSColor(red: 0.12, green: 0.13, blue: 0.17, alpha: 1.0)))
+        .cornerRadius(6)
+        .overlay(
+            RoundedRectangle(cornerRadius: 6)
+                .stroke(Color.white.opacity(0.06), lineWidth: 1)
+        )
     }
 }

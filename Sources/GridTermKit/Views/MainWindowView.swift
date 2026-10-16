@@ -11,185 +11,92 @@ public struct MainWindowView: View {
     
     public var body: some View {
         VStack(spacing: 0) {
-            // Main Terminal Grid
+            // Main Resizable Terminal Grid
             ResizableGridView(sessionManager: sessionManager)
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
             
-            // Minimal bottom status bar
+            // Minimalist Bottom Status Bar
             HStack(spacing: 12) {
                 // Active pane indicator
                 if let active = sessionManager.activeSession {
                     HStack(spacing: 5) {
                         Circle()
-                            .fill(active.isRunning ? Color.green : Color.orange)
-                            .frame(width: 6, height: 6)
+                            .fill(active.isRunning ? Color(red: 0.2, green: 0.9, blue: 0.5) : Color.orange)
+                            .frame(width: 5, height: 5)
+                            .shadow(color: active.isRunning ? Color.green.opacity(0.5) : Color.clear, radius: 2)
+                        
                         Text("Terminal #\(active.sessionNumber)")
                             .font(.system(size: 10, weight: .semibold, design: .monospaced))
                             .foregroundColor(.primary)
                         
                         if let index = sessionManager.visibleSessions.firstIndex(where: { $0.id == active.id }), index < 9 {
                             Text("(⌘\(index + 1))")
-                                .font(.system(size: 9, design: .monospaced))
-                                .foregroundColor(.blue)
+                                .font(.system(size: 9, weight: .bold, design: .monospaced))
+                                .foregroundColor(Color.cyan)
                         }
                     }
                 }
                 
                 Text("•")
-                    .foregroundColor(.secondary.opacity(0.4))
+                    .foregroundColor(.secondary.opacity(0.3))
                 
-                // Layout indicator
+                // Current active terminal path
+                if let active = sessionManager.activeSession {
+                    HStack(spacing: 4) {
+                        Image(systemName: "folder")
+                            .font(.system(size: 9))
+                        Text(active.currentDirectoryPath.replacingOccurrences(of: NSHomeDirectory(), with: "~"))
+                            .font(.system(size: 10, design: .monospaced))
+                    }
+                    .foregroundColor(.secondary)
+                    .lineLimit(1)
+                    .truncationMode(.middle)
+                }
+                
+                Spacer()
+                
+                // Active Layout indicator
                 HStack(spacing: 4) {
                     MiniGridIcon(rows: sessionManager.activeLayout.rows, cols: sessionManager.activeLayout.cols)
                         .frame(width: 10, height: 9)
-                    Text(sessionManager.activeLayout.displayName)
+                    Text("\(sessionManager.activeLayout.displayName) (\(sessionManager.visibleSessions.count) panes)")
                         .font(.system(size: 10, design: .monospaced))
                         .foregroundColor(.secondary)
                 }
                 
                 Text("•")
-                    .foregroundColor(.secondary.opacity(0.4))
-                
-                // Working Directory
-                HStack(spacing: 4) {
-                    Image(systemName: "folder")
-                        .font(.system(size: 9))
-                    Text(sessionManager.selectedWorkingDirectory.lastPathComponent)
-                        .font(.system(size: 10, design: .monospaced))
-                }
-                .foregroundColor(.secondary)
-                
-                Spacer()
-                
-                // Font size indicator
-                Text("\(Int(sessionManager.globalFontSize))pt")
-                    .font(.system(size: 10, design: .monospaced))
-                    .foregroundColor(.secondary)
-                
-                Text("•")
-                    .foregroundColor(.secondary.opacity(0.4))
+                    .foregroundColor(.secondary.opacity(0.3))
                 
                 // Keyboard hint
                 Text("⌘1–⌘9: Focus • ⌘+/-: Font • ⌘K: Clear")
                     .font(.system(size: 9))
-                    .foregroundColor(.secondary.opacity(0.7))
+                    .foregroundColor(.secondary.opacity(0.6))
             }
             .padding(.horizontal, 10)
             .frame(height: 22)
-            .background(Color(nsColor: NSColor(red: 0.08, green: 0.09, blue: 0.11, alpha: 1.0)))
+            .background(Color(nsColor: NSColor(red: 0.06, green: 0.07, blue: 0.09, alpha: 1.0)))
             .overlay(
                 Rectangle()
                     .frame(height: 1)
-                    .foregroundColor(Color.white.opacity(0.06)),
+                    .foregroundColor(Color.white.opacity(0.05)),
                 alignment: .top
             )
         }
-        .background(Color(nsColor: NSColor(red: 0.09, green: 0.10, blue: 0.12, alpha: 1.0)))
+        .background(Color(nsColor: NSColor(red: 0.07, green: 0.08, blue: 0.10, alpha: 1.0)))
         .toolbar {
             ToolbarItemGroup(placement: .automatic) {
-                // Grid layout selector button
-                Button(action: {
-                    showingGridPopover.toggle()
-                }) {
-                    HStack(spacing: 5) {
-                        MiniGridIcon(rows: sessionManager.activeLayout.rows, cols: sessionManager.activeLayout.cols)
-                            .frame(width: 14, height: 12)
-                        Text(sessionManager.activeLayout.displayName)
-                            .font(.system(size: 11, weight: .medium))
-                        Image(systemName: "chevron.down")
-                            .font(.system(size: 8, weight: .bold))
-                            .foregroundColor(.secondary)
-                    }
-                    .padding(.horizontal, 6)
-                    .padding(.vertical, 3)
-                    .background(Color.white.opacity(0.08))
-                    .cornerRadius(5)
-                }
-                .buttonStyle(.plain)
-                .popover(isPresented: $showingGridPopover, arrowEdge: .bottom) {
-                    GridSelectorPopoverView(
-                        sessionManager: sessionManager,
-                        isPresented: $showingGridPopover
-                    )
-                }
-                .help("Select Grid Layout")
-                
-                // Working Directory Picker
-                WorkingDirectoryToolbarItem(sessionManager: sessionManager)
+                // Quick Layout Selector Pills in the toolbar
+                QuickLayoutPillBar(
+                    sessionManager: sessionManager,
+                    showingPopover: $showingGridPopover
+                )
                 
                 Spacer()
                 
-                // Quick Layout presets in toolbar
-                HStack(spacing: 2) {
-                    Button(action: { sessionManager.setLayout(.preset1x1) }) {
-                        Text("1×1")
-                            .font(.system(size: 10, weight: sessionManager.activeLayout == .preset1x1 ? .bold : .regular))
-                    }
-                    .buttonStyle(.plain)
-                    .padding(.horizontal, 5)
-                    .padding(.vertical, 3)
-                    .background(sessionManager.activeLayout == .preset1x1 ? Color.blue.opacity(0.2) : Color.clear)
-                    .cornerRadius(4)
-                    
-                    Button(action: { sessionManager.setLayout(.preset1x2) }) {
-                        Text("1×2")
-                            .font(.system(size: 10, weight: sessionManager.activeLayout == .preset1x2 ? .bold : .regular))
-                    }
-                    .buttonStyle(.plain)
-                    .padding(.horizontal, 5)
-                    .padding(.vertical, 3)
-                    .background(sessionManager.activeLayout == .preset1x2 ? Color.blue.opacity(0.2) : Color.clear)
-                    .cornerRadius(4)
-                    
-                    Button(action: { sessionManager.setLayout(.preset2x2) }) {
-                        Text("2×2")
-                            .font(.system(size: 10, weight: sessionManager.activeLayout == .preset2x2 ? .bold : .regular))
-                    }
-                    .buttonStyle(.plain)
-                    .padding(.horizontal, 5)
-                    .padding(.vertical, 3)
-                    .background(sessionManager.activeLayout == .preset2x2 ? Color.blue.opacity(0.2) : Color.clear)
-                    .cornerRadius(4)
-                    
-                    Button(action: { sessionManager.setLayout(.preset3x3) }) {
-                        Text("3×3")
-                            .font(.system(size: 10, weight: sessionManager.activeLayout == .preset3x3 ? .bold : .regular))
-                    }
-                    .buttonStyle(.plain)
-                    .padding(.horizontal, 5)
-                    .padding(.vertical, 3)
-                    .background(sessionManager.activeLayout == .preset3x3 ? Color.blue.opacity(0.2) : Color.clear)
-                    .cornerRadius(4)
-                }
-                .padding(2)
-                .background(Color.white.opacity(0.06))
-                .cornerRadius(5)
-                
                 // Font zoom controls
-                HStack(spacing: 2) {
-                    Button(action: { sessionManager.zoomOut() }) {
-                        Image(systemName: "minus")
-                            .font(.system(size: 9))
-                    }
-                    .buttonStyle(.plain)
-                    .padding(.horizontal, 5)
-                    .padding(.vertical, 3)
-                    .help("Zoom Out (⌘-)")
-                    
-                    Button(action: { sessionManager.zoomIn() }) {
-                        Image(systemName: "plus")
-                            .font(.system(size: 9))
-                    }
-                    .buttonStyle(.plain)
-                    .padding(.horizontal, 5)
-                    .padding(.vertical, 3)
-                    .help("Zoom In (⌘+)")
-                }
-                .padding(2)
-                .background(Color.white.opacity(0.06))
-                .cornerRadius(5)
+                FontZoomPillBar(sessionManager: sessionManager)
                 
-                // Clear active terminal
+                // Clear active terminal button
                 Button(action: {
                     sessionManager.clearActiveTerminal()
                 }) {
@@ -198,8 +105,8 @@ public struct MainWindowView: View {
                 }
                 .buttonStyle(.plain)
                 .padding(.horizontal, 6)
-                .padding(.vertical, 3)
-                .background(Color.white.opacity(0.08))
+                .padding(.vertical, 4)
+                .background(Color.white.opacity(0.06))
                 .cornerRadius(5)
                 .help("Clear Terminal Screen (⌘K)")
             }

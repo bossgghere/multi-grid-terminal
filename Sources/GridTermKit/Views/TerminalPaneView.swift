@@ -47,10 +47,16 @@ public struct TerminalPaneView: View {
     
     public var body: some View {
         VStack(spacing: 0) {
-            // Header bar
+            // Sleek Pane Header Bar
             HStack(spacing: 8) {
-                // Session index badge
-                HStack(spacing: 4) {
+                // Session index pill & shortcut
+                HStack(spacing: 5) {
+                    // Running pulse indicator
+                    Circle()
+                        .fill(session.isRunning ? Color(red: 0.2, green: 0.9, blue: 0.5) : Color.orange)
+                        .frame(width: 5, height: 5)
+                        .shadow(color: session.isRunning ? Color.green.opacity(0.6) : Color.clear, radius: 3)
+                    
                     Text("#\(session.sessionNumber)")
                         .font(.system(size: 10, weight: .bold, design: .monospaced))
                         .foregroundColor(isFocused ? .white : .secondary)
@@ -58,37 +64,41 @@ public struct TerminalPaneView: View {
                         .padding(.vertical, 2)
                         .background(
                             RoundedRectangle(cornerRadius: 4)
-                                .fill(isFocused ? Color.blue : Color.white.opacity(0.1))
+                                .fill(isFocused ? Color(red: 0.08, green: 0.65, blue: 0.95) : Color.white.opacity(0.08))
                         )
                     
                     if let index = shortcutIndex, index <= 9 {
                         Text("⌘\(index)")
-                            .font(.system(size: 9, weight: .medium, design: .monospaced))
-                            .foregroundColor(isFocused ? Color.blue : Color.secondary.opacity(0.8))
+                            .font(.system(size: 9, weight: .bold, design: .monospaced))
+                            .foregroundColor(isFocused ? Color(red: 0.2, green: 0.8, blue: 1.0) : Color.secondary.opacity(0.7))
                     }
                 }
                 
                 // Process title / Shell name
                 Text(session.title)
-                    .font(.system(size: 11, weight: .medium))
+                    .font(.system(size: 11, weight: .semibold))
                     .foregroundColor(isFocused ? .primary : .secondary)
                     .lineLimit(1)
                 
                 Spacer()
                 
-                // Current Directory
-                HStack(spacing: 3) {
+                // Dynamic Current Working Directory
+                HStack(spacing: 4) {
                     Image(systemName: "folder")
-                        .font(.system(size: 10))
+                        .font(.system(size: 9))
                     Text(cwdDisplayName)
-                        .font(.system(size: 10, design: .monospaced))
+                        .font(.system(size: 10, weight: .medium, design: .monospaced))
                 }
-                .foregroundColor(.secondary)
+                .foregroundColor(isFocused ? .secondary : .secondary.opacity(0.6))
                 .lineLimit(1)
                 .truncationMode(.middle)
+                .padding(.horizontal, 6)
+                .padding(.vertical, 2)
+                .background(Color.white.opacity(0.04))
+                .cornerRadius(4)
                 
-                // Action buttons
-                HStack(spacing: 4) {
+                // Action buttons with sleek hover states
+                HStack(spacing: 5) {
                     Button(action: onClear) {
                         Image(systemName: "sun.min")
                             .font(.system(size: 10))
@@ -115,18 +125,18 @@ public struct TerminalPaneView: View {
                     
                     Button(action: onClose) {
                         Image(systemName: "xmark")
-                            .font(.system(size: 9, weight: .semibold))
+                            .font(.system(size: 9, weight: .bold))
                     }
                     .buttonStyle(.plain)
-                    .foregroundColor(isHovering ? .red : .secondary)
+                    .foregroundColor(isHovering ? .red.opacity(0.9) : .secondary)
                     .help("Close Terminal Pane")
                 }
             }
-            .padding(.horizontal, 8)
-            .frame(height: 26)
+            .padding(.horizontal, 9)
+            .frame(height: 27)
             .background(
-                isFocused ? Color(nsColor: NSColor(red: 0.16, green: 0.17, blue: 0.22, alpha: 1.0)) :
-                            Color(nsColor: NSColor(red: 0.12, green: 0.13, blue: 0.16, alpha: 1.0))
+                isFocused ? Color(nsColor: NSColor(red: 0.12, green: 0.14, blue: 0.19, alpha: 1.0)) :
+                            Color(nsColor: NSColor(red: 0.08, green: 0.09, blue: 0.12, alpha: 1.0))
             )
             .contentShape(Rectangle())
             .onTapGesture {
@@ -134,24 +144,37 @@ public struct TerminalPaneView: View {
             }
             
             Divider()
-                .background(Color.white.opacity(0.08))
+                .background(isFocused ? Color.cyan.opacity(0.2) : Color.white.opacity(0.06))
             
             // Terminal View
             TerminalContainerView(session: session, isFocused: isFocused)
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
-        .background(Color(nsColor: NSColor(red: 0.10, green: 0.11, blue: 0.14, alpha: 1.0)))
-        .clipShape(RoundedRectangle(cornerRadius: 6))
+        .background(Color(nsColor: NSColor(red: 0.07, green: 0.08, blue: 0.11, alpha: 1.0)))
+        .clipShape(RoundedRectangle(cornerRadius: 7))
         .overlay(
-            RoundedRectangle(cornerRadius: 6)
+            RoundedRectangle(cornerRadius: 7)
                 .stroke(
-                    isFocused ? Color.blue.opacity(0.85) : Color.white.opacity(0.08),
+                    isFocused ?
+                        LinearGradient(
+                            colors: [
+                                Color(red: 0.15, green: 0.85, blue: 1.0),
+                                Color(red: 0.45, green: 0.40, blue: 1.0)
+                            ],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        ) :
+                        LinearGradient(
+                            colors: [Color.white.opacity(0.08), Color.white.opacity(0.04)],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        ),
                     lineWidth: isFocused ? 1.5 : 1.0
                 )
         )
         .shadow(
-            color: isFocused ? Color.blue.opacity(0.2) : Color.clear,
-            radius: 4,
+            color: isFocused ? Color(red: 0.1, green: 0.75, blue: 1.0).opacity(0.28) : Color.clear,
+            radius: 8,
             x: 0,
             y: 0
         )

@@ -8,4 +8,5 @@ DerivedData/
 .netrc
 *.app
 *.dmg
+dist/
 AppIcon.iconset/
