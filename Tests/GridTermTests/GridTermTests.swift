@@ -251,4 +251,171 @@ final class GridTermTests: XCTestCase {
         try? FileManager.default.removeItem(atPath: tempFile2)
         try? FileManager.default.removeItem(atPath: tempFile3)
     }
+    
+    // MARK: - Drag and Drop File Insertion & Path Escaping Tests
+    
+    func testShellPathEscaping() {
+        // Standard path without special characters
+        let simple = "/Users/gourav/Desktop/test.txt"
+        XCTAssertEqual(ShellEnvironment.escapePath(simple), simple)
+        
+        // Path with spaces
+        let withSpaces = "/Users/gourav/My Documents/test file.txt"
+        XCTAssertEqual(ShellEnvironment.escapePath(withSpaces), "/Users/gourav/My\\ Documents/test\\ file.txt")
+        
+        // Path with shell metacharacters: (), [], {}, $, &, ;, *, ?, ', ", `
+        let withMeta = "/Users/gourav/Project (v1) [final] & 'cool'$`*?{1}.txt"
+        let expectedMeta = "/Users/gourav/Project\\ \\(v1\\)\\ \\[final\\]\\ \\&\\ \\'cool\\'\\$\\`\\*\\?\\{1\\}.txt"
+        XCTAssertEqual(ShellEnvironment.escapePath(withMeta), expectedMeta)
+        
+        // Path with Unicode characters and spaces
+        let unicodePath = "/Users/gourav/📁 Projekt/résumé (1).pdf"
+        XCTAssertEqual(ShellEnvironment.escapePath(unicodePath), "/Users/gourav/📁\\ Projekt/résumé\\ \\(1\\).pdf")
+    }
+    
+    func testFormatDroppedURLs() {
+        let url1 = URL(fileURLWithPath: "/Users/gourav/My Documents/report.pdf")
+        let url2 = URL(fileURLWithPath: "/Users/gourav/Desktop/data (1).csv")
+        
+        // Single dropped file URL must have trailing space
+        let singleFormatted = ShellEnvironment.formatDroppedURLs([url1])
+        XCTAssertEqual(singleFormatted, "/Users/gourav/My\\ Documents/report.pdf ")
+        
+        // Multiple dropped file URLs must be space-delimited with trailing space
+        let multiFormatted = ShellEnvironment.formatDroppedURLs([url1, url2])
+        XCTAssertEqual(multiFormatted, "/Users/gourav/My\\ Documents/report.pdf /Users/gourav/Desktop/data\\ \\(1\\).csv ")
+        
+        // Empty array returns empty string
+        XCTAssertEqual(ShellEnvironment.formatDroppedURLs([]), "")
+    }
+    
+    func testGridLocalTerminalViewRegisteredDragTypes() {
+        let view = GridLocalTerminalView(frame: .zero)
+        let registered = view.registeredDraggedTypes
+        
+        XCTAssertTrue(registered.contains(.fileURL), "View must register for .fileURL")
+        XCTAssertTrue(registered.contains(.string), "View must register for .string")
+        XCTAssertTrue(registered.contains(.URL), "View must register for .URL")
+    }
+    
+    func testTerminalSessionDropHandling() {
+        let session = TerminalSession(sessionNumber: 1)
+        var focusCalled = false
+        session.onFocusRequested = { _ in
+            focusCalled = true
+        }
+        
+        let testURL = URL(fileURLWithPath: "/tmp/dropped test file.txt")
+        session.handleDroppedURLs([testURL])
+        
+        XCTAssertTrue(focusCalled, "Dropping a file URL must request focus for the session")
+        
+        // Verify text drop handling
+        var textFocusCalled = false
+        session.onFocusRequested = { _ in
+            textFocusCalled = true
+        }
+        session.handleDroppedText("echo test\n")
+        XCTAssertTrue(textFocusCalled, "Dropping text must request focus for the session")
+    }
+    
+    // MARK: - 3-Terminal Split & Session Management Optimization Tests
+    
+    func testThreeTerminalSplitLayouts() {
+        let split1L2R = GridLayout.preset1Left2Right
+        XCTAssertEqual(split1L2R.count, 3)
+        XCTAssertEqual(split1L2R.kind, .oneLeftTwoRight)
+        XCTAssertEqual(split1L2R.displayName, "3 Split (1L + 2R)")
+        XCTAssertEqual(split1L2R.id, "1L_2R")
+        
+        let split2L1R = GridLayout.preset2Left1Right
+        XCTAssertEqual(split2L1R.count, 3)
+        XCTAssertEqual(split2L1R.kind, .twoLeftOneRight)
+        
+        let split1T2B = GridLayout.preset1Top2Bottom
+        XCTAssertEqual(split1T2B.count, 3)
+        XCTAssertEqual(split1T2B.kind, .oneTopTwoBottom)
+    }
+    
+    func testSessionManagerWithThreeTerminalSplit() {
+        let manager = SessionManager()
+        manager.setLayout(.preset1Left2Right)
+        
+        XCTAssertEqual(manager.activeLayout.count, 3)
+        XCTAssertEqual(manager.visibleSessions.count, 3)
+        
+        // Sessions must be numbered cleanly 1, 2, 3
+        XCTAssertEqual(manager.visibleSessions[0].sessionNumber, 1)
+        XCTAssertEqual(manager.visibleSessions[1].sessionNumber, 2)
+        XCTAssertEqual(manager.visibleSessions[2].sessionNumber, 3)
+    }
+    
+    func testSessionRenumberingNoRandomNumbers() {
+        let manager = SessionManager()
+        manager.setLayout(.preset2x2) // 4 sessions: 1, 2, 3, 4
+        
+        XCTAssertEqual(manager.sessions.count, 4)
+        for (i, session) in manager.sessions.enumerated() {
+            XCTAssertEqual(session.sessionNumber, i + 1)
+        }
+        
+        // Close session 1
+        manager.closeSession(manager.sessions[1])
+        
+        // Rebalanced sessions must remain cleanly numbered 1, 2, 3, 4 without random gaps or jumping to 6, 7, 8
+        XCTAssertEqual(manager.sessions.count, 4)
+        for (i, session) in manager.sessions.enumerated() {
+            XCTAssertEqual(session.sessionNumber, i + 1)
+        }
+    }
+    
+    func testPruneInactiveSessionsFreesRAM() {
+        let manager = SessionManager()
+        manager.setLayout(.preset2x2) // 4 sessions
+        XCTAssertEqual(manager.sessions.count, 4)
+        
+        // Switch to 1x2 (2 visible, 2 idle)
+        manager.setLayout(.preset1x2)
+        XCTAssertEqual(manager.visibleSessions.count, 2)
+        XCTAssertEqual(manager.idleSessionCount, 2)
+        
+        // Prune idle sessions to reclaim memory
+        manager.pruneInactiveSessions()
+        XCTAssertEqual(manager.sessions.count, 2)
+        XCTAssertEqual(manager.visibleSessions.count, 2)
+        XCTAssertEqual(manager.idleSessionCount, 0)
+    }
+    
+    func testAddAndRemoveTerminalPane() {
+        let manager = SessionManager()
+        manager.setLayout(.preset1x1)
+        XCTAssertEqual(manager.activeLayout.count, 1)
+        
+        // 1 -> 2
+        manager.addTerminalPane()
+        XCTAssertEqual(manager.activeLayout, .preset1x2)
+        XCTAssertEqual(manager.visibleSessions.count, 2)
+        
+        // 2 -> 3 (1 Left + 2 Right!)
+        manager.addTerminalPane()
+        XCTAssertEqual(manager.activeLayout, .preset1Left2Right)
+        XCTAssertEqual(manager.visibleSessions.count, 3)
+        
+        // 3 -> 4 (2x2)
+        manager.addTerminalPane()
+        XCTAssertEqual(manager.activeLayout, .preset2x2)
+        XCTAssertEqual(manager.visibleSessions.count, 4)
+        
+        // Step down: 4 -> 3
+        manager.removeTerminalPane()
+        XCTAssertEqual(manager.activeLayout, .preset1Left2Right)
+        
+        // Step down: 3 -> 2
+        manager.removeTerminalPane()
+        XCTAssertEqual(manager.activeLayout, .preset1x2)
+        
+        // Step down: 2 -> 1
+        manager.removeTerminalPane()
+        XCTAssertEqual(manager.activeLayout, .preset1x1)
+    }
 }

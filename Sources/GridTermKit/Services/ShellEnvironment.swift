@@ -80,4 +80,106 @@ public enum ShellEnvironment {
         
         return env.map { "\($0.key)=\($0.value)" }
     }
+    
+    // MARK: - Path Escaping & Drag-and-Drop Helpers
+    
+    /// Escapes special shell characters in a file or directory path so that it can be safely pasted into a shell command line.
+    public static func escapePath(_ path: String) -> String {
+        let charactersToEscape: Set<Character> = [
+            " ", "\t", "\n", "\r",
+            "\\", "'", "\"", "`",
+            "$", "*", "?", "~", "#",
+            "{", "}", "(", ")",
+            "<", ">", "&", ";", "|",
+            "!", "[", "]", "^"
+        ]
+        var result = ""
+        result.reserveCapacity(path.count + 8)
+        for char in path {
+            if charactersToEscape.contains(char) {
+                result.append("\\")
+            }
+            result.append(char)
+        }
+        return result
+    }
+    
+    /// Formats an array of dropped URLs into an escaped, space-separated string suitable for insertion into a terminal shell.
+    public static func formatDroppedURLs(_ urls: [URL]) -> String {
+        guard !urls.isEmpty else { return "" }
+        let formatted = urls.map { url -> String in
+            let path = url.isFileURL ? url.path : url.absoluteString
+            return escapePath(path)
+        }.joined(separator: " ") + " "
+        return formatted
+    }
+    
+    /// Checks whether the dragging pasteboard contains readable file URLs, general URLs, or text strings.
+    public static func canHandleDrag(pasteboard: NSPasteboard) -> Bool {
+        if pasteboard.canReadObject(forClasses: [NSURL.self], options: nil) {
+            return true
+        }
+        if let types = pasteboard.types {
+            if types.contains(.fileURL) ||
+               types.contains(.URL) ||
+               types.contains(.string) ||
+               types.contains(NSPasteboard.PasteboardType("NSFilenamesPboardType")) {
+                return true
+            }
+        }
+        return false
+    }
+    
+    /// Extracts file URLs or generic URLs from the dragging pasteboard across modern and legacy pasteboard types.
+    public static func extractURLs(from pasteboard: NSPasteboard) -> [URL] {
+        // 1. Try reading standard NSURL objects with file URLs only option
+        if let urls = pasteboard.readObjects(forClasses: [NSURL.self], options: [.urlReadingFileURLsOnly: true]) as? [URL], !urls.isEmpty {
+            return urls
+        }
+        
+        // 2. Try reading URLs from pasteboard items
+        if let items = pasteboard.pasteboardItems {
+            var urls: [URL] = []
+            for item in items {
+                if let urlString = item.string(forType: .fileURL) ?? item.string(forType: .URL),
+                   let url = URL(string: urlString) {
+                    urls.append(url)
+                }
+            }
+            if !urls.isEmpty {
+                return urls
+            }
+        }
+        
+        // 3. Try legacy NSFilenamesPboardType
+        if let filenames = pasteboard.propertyList(forType: NSPasteboard.PasteboardType("NSFilenamesPboardType")) as? [String], !filenames.isEmpty {
+            return filenames.map { URL(fileURLWithPath: $0) }
+        }
+        
+        // 4. Try reading NSURL objects without options
+        if let urls = pasteboard.readObjects(forClasses: [NSURL.self], options: nil) as? [URL], !urls.isEmpty {
+            return urls
+        }
+        
+        // 5. Try plain text that starts with file://
+        if let text = extractString(from: pasteboard) {
+            let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+            if trimmed.hasPrefix("file://"), let url = URL(string: trimmed) {
+                return [url]
+            }
+        }
+        
+        return []
+    }
+    
+    /// Extracts plain text from the dragging pasteboard.
+    public static func extractString(from pasteboard: NSPasteboard) -> String? {
+        if let strings = pasteboard.readObjects(forClasses: [NSString.self], options: nil) as? [String], let first = strings.first, !first.isEmpty {
+            return first
+        }
+        if let str = pasteboard.string(forType: .string), !str.isEmpty {
+            return str
+        }
+        return nil
+    }
 }

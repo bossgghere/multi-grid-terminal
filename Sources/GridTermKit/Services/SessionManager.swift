@@ -54,6 +54,31 @@ public final class SessionManager: ObservableObject {
         return sessions.first(where: { $0.id == id }) ?? sessions.first
     }
     
+    public var idleSessionCount: Int {
+        max(0, sessions.count - visibleSessions.count)
+    }
+    
+    public func renumberSessions() {
+        for (index, session) in sessions.enumerated() {
+            session.sessionNumber = index + 1
+            if session.title.hasPrefix("Terminal ") {
+                session.title = "Terminal \(index + 1)"
+            }
+        }
+    }
+    
+    public func pruneInactiveSessions() {
+        let needed = activeLayout.count
+        if sessions.count > needed {
+            let toRemove = Array(sessions.suffix(from: needed))
+            for s in toRemove {
+                s.terminalView.terminate()
+            }
+            sessions.removeSubrange(needed..<sessions.count)
+            renumberSessions()
+        }
+    }
+    
     public func ensureSessionsForCurrentLayout() {
         let needed = activeLayout.count
         while sessions.count < needed {
@@ -69,10 +94,46 @@ public final class SessionManager: ObservableObject {
             sessions.append(newSession)
         }
         
+        renumberSessions()
+        
         // If current active session is no longer visible, move focus to the first visible session
         let visible = visibleSessions
         if let currentActive = activeSessionId, !visible.contains(where: { $0.id == currentActive }) {
             activeSessionId = visible.first?.id
+        }
+    }
+    
+    public func addTerminalPane() {
+        switch activeLayout.count {
+        case 1:
+            setLayout(.preset1x2)
+        case 2:
+            setLayout(.preset1Left2Right)
+        case 3:
+            setLayout(.preset2x2)
+        case 4:
+            setLayout(.preset2x3)
+        default:
+            setLayout(GridLayout(rows: activeLayout.rows, cols: min(6, activeLayout.cols + 1)))
+        }
+    }
+    
+    public func removeTerminalPane() {
+        switch activeLayout.count {
+        case 2:
+            setLayout(.preset1x1)
+        case 3:
+            setLayout(.preset1x2)
+        case 4:
+            setLayout(.preset1Left2Right)
+        case 6:
+            setLayout(.preset2x2)
+        default:
+            if activeLayout.cols > 1 {
+                setLayout(GridLayout(rows: activeLayout.rows, cols: max(1, activeLayout.cols - 1)))
+            } else if activeLayout.rows > 1 {
+                setLayout(GridLayout(rows: max(1, activeLayout.rows - 1), cols: 1))
+            }
         }
     }
     
@@ -148,6 +209,7 @@ public final class SessionManager: ObservableObject {
             sessions.remove(at: index)
         }
         ensureSessionsForCurrentLayout()
+        renumberSessions()
         focusActiveSession()
     }
     

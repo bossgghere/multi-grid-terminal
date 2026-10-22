@@ -1,5 +1,6 @@
 import SwiftUI
 import AppKit
+import UniformTypeIdentifiers
 
 public struct TerminalPaneView: View {
     @ObservedObject var session: TerminalSession
@@ -57,7 +58,7 @@ public struct TerminalPaneView: View {
                         .frame(width: 5, height: 5)
                         .shadow(color: session.isRunning ? Color.green.opacity(0.6) : Color.clear, radius: 3)
                     
-                    Text("#\(session.sessionNumber)")
+                    Text("#\(shortcutIndex ?? session.sessionNumber)")
                         .font(.system(size: 10, weight: .bold, design: .monospaced))
                         .foregroundColor(isFocused ? .white : .secondary)
                         .padding(.horizontal, 5)
@@ -142,6 +143,34 @@ public struct TerminalPaneView: View {
             .onTapGesture {
                 onFocus()
             }
+            .onDrop(of: [.fileURL, .text], isTargeted: Binding(
+                get: { session.isDragTargeted },
+                set: { session.isDragTargeted = $0 }
+            )) { providers in
+                var handled = false
+                for provider in providers {
+                    if provider.hasItemConformingToTypeIdentifier(UTType.fileURL.identifier) {
+                        _ = provider.loadObject(ofClass: URL.self) { url, _ in
+                            if let url = url {
+                                DispatchQueue.main.async {
+                                    session.handleDroppedURLs([url])
+                                }
+                            }
+                        }
+                        handled = true
+                    } else if provider.hasItemConformingToTypeIdentifier(UTType.text.identifier) {
+                        _ = provider.loadObject(ofClass: String.self) { text, _ in
+                            if let text = text {
+                                DispatchQueue.main.async {
+                                    session.handleDroppedText(text)
+                                }
+                            }
+                        }
+                        handled = true
+                    }
+                }
+                return handled
+            }
             
             Divider()
                 .background(isFocused ? Color.cyan.opacity(0.2) : Color.white.opacity(0.06))
@@ -155,7 +184,7 @@ public struct TerminalPaneView: View {
         .overlay(
             RoundedRectangle(cornerRadius: 7)
                 .stroke(
-                    isFocused ?
+                    (isFocused || session.isDragTargeted) ?
                         LinearGradient(
                             colors: [
                                 Color(red: 0.15, green: 0.85, blue: 1.0),
@@ -169,12 +198,12 @@ public struct TerminalPaneView: View {
                             startPoint: .topLeading,
                             endPoint: .bottomTrailing
                         ),
-                    lineWidth: isFocused ? 1.5 : 1.0
+                    lineWidth: (isFocused || session.isDragTargeted) ? 1.5 : 1.0
                 )
         )
         .shadow(
-            color: isFocused ? Color(red: 0.1, green: 0.75, blue: 1.0).opacity(0.28) : Color.clear,
-            radius: 8,
+            color: (isFocused || session.isDragTargeted) ? Color(red: 0.1, green: 0.75, blue: 1.0).opacity(session.isDragTargeted ? 0.45 : 0.28) : Color.clear,
+            radius: session.isDragTargeted ? 12 : 8,
             x: 0,
             y: 0
         )

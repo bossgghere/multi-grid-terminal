@@ -57,11 +57,36 @@ public struct MainWindowView: View {
                 
                 // Active Layout indicator
                 HStack(spacing: 4) {
-                    MiniGridIcon(rows: sessionManager.activeLayout.rows, cols: sessionManager.activeLayout.cols)
+                    MiniGridIcon(layout: sessionManager.activeLayout)
                         .frame(width: 10, height: 9)
                     Text("\(sessionManager.activeLayout.displayName) (\(sessionManager.visibleSessions.count) panes)")
                         .font(.system(size: 10, design: .monospaced))
                         .foregroundColor(.secondary)
+                }
+                
+                // RAM optimization pill if idle shells exist in background
+                if sessionManager.idleSessionCount > 0 {
+                    Text("•")
+                        .foregroundColor(.secondary.opacity(0.3))
+                    
+                    Button(action: {
+                        sessionManager.pruneInactiveSessions()
+                    }) {
+                        HStack(spacing: 3) {
+                            Image(systemName: "bolt.fill")
+                                .font(.system(size: 8))
+                                .foregroundColor(.yellow)
+                            Text("Free RAM (\(sessionManager.idleSessionCount) idle)")
+                                .font(.system(size: 9, weight: .bold, design: .monospaced))
+                                .foregroundColor(.yellow)
+                        }
+                        .padding(.horizontal, 5)
+                        .padding(.vertical, 2)
+                        .background(Color.yellow.opacity(0.15))
+                        .cornerRadius(3)
+                    }
+                    .buttonStyle(.plain)
+                    .help("Terminate \(sessionManager.idleSessionCount) inactive background shell(s) to free memory")
                 }
                 
                 Text("•")

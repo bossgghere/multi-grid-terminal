@@ -5,11 +5,12 @@ import SwiftTerm
 @MainActor
 public final class TerminalSession: NSObject, Identifiable, ObservableObject {
     public let id: UUID
-    public let sessionNumber: Int
+    @Published public var sessionNumber: Int
     
     @Published public var title: String
     @Published public var currentDirectoryPath: String
     @Published public var isRunning: Bool = false
+    @Published public var isDragTargeted: Bool = false
     @Published public var exitCode: Int32? = nil
     @Published public var fontSize: CGFloat = 13.0 {
         didSet {
@@ -36,6 +37,21 @@ public final class TerminalSession: NSObject, Identifiable, ObservableObject {
         view.onMouseDown = { [weak self] in
             guard let self = self else { return }
             self.onFocusRequested?(self)
+        }
+        
+        view.onDragTargetChanged = { [weak self] isTargeted in
+            guard let self = self else { return }
+            self.isDragTargeted = isTargeted
+        }
+        
+        view.onURLsDropped = { [weak self] urls in
+            guard let self = self else { return }
+            self.handleDroppedURLs(urls)
+        }
+        
+        view.onTextDropped = { [weak self] text in
+            guard let self = self else { return }
+            self.handleDroppedText(text)
         }
         
         configureTerminalAppearance()
@@ -92,9 +108,24 @@ public final class TerminalSession: NSObject, Identifiable, ObservableObject {
     
     public func focus() {
         if let window = terminalView.window {
+            NSApp.activate(ignoringOtherApps: true)
+            window.makeKeyAndOrderFront(nil)
             window.makeFirstResponder(terminalView)
         }
         onFocusRequested?(self)
+    }
+    
+    public func handleDroppedURLs(_ urls: [URL]) {
+        guard !urls.isEmpty else { return }
+        let formatted = ShellEnvironment.formatDroppedURLs(urls)
+        focus()
+        terminalView.send(txt: formatted)
+    }
+    
+    public func handleDroppedText(_ text: String) {
+        guard !text.isEmpty else { return }
+        focus()
+        terminalView.send(txt: text)
     }
 }
 
